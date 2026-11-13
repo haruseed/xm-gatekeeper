@@ -1,0 +1,19 @@
+{
+  "name": "@guard/bot",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@guard/assets": "workspace:*",
+    "@guard/captcha": "workspace:*",
+    "@guard/core": "workspace:*",
+    "@guard/database": "workspace:*",
+    "@guard/i18n": "workspace:*",
+    "dayjs": "1.11.23",
+    "grammy": "1.46.0"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "version": "0.1.0-alpha.1",
+  "license": "MIT"
+}

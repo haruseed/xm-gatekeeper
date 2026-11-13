@@ -1,0 +1,62 @@
+[
+  {
+    "id": "circle",
+    "en": "Circle",
+    "zhHant": "圓形",
+    "zhHans": "圆形"
+  },
+  {
+    "id": "triangle",
+    "en": "Triangle",
+    "zhHant": "三角形",
+    "zhHans": "三角形"
+  },
+  {
+    "id": "square",
+    "en": "Square",
+    "zhHant": "正方形",
+    "zhHans": "正方形"
+  },
+  {
+    "id": "star",
+    "en": "Star",
+    "zhHant": "星形",
+    "zhHans": "星形"
+  },
+  {
+    "id": "hexagon",
+    "en": "Hexagon",
+    "zhHant": "六角形",
+    "zhHans": "六角形"
+  },
+  {
+    "id": "cross",
+    "en": "Cross",
+    "zhHant": "十字形",
+    "zhHans": "十字形"
+  },
+  {
+    "id": "heart",
+    "en": "Heart",
+    "zhHant": "心形",
+    "zhHans": "心形"
+  },
+  {
+    "id": "diamond",
+    "en": "Diamond",
+    "zhHant": "菱形",
+    "zhHans": "菱形"
+  },
+  {
+    "id": "crescent",
+    "en": "Crescent",
+    "zhHant": "月牙形",
+    "zhHans": "月牙形"
+  },
+  {
+    "id": "ring",
+    "en": "Ring",
+    "zhHant": "環形",
+    "zhHans": "环形"
+  }
+]

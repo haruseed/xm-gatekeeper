@@ -1,0 +1,10 @@
+{
+  "name": "@guard/core",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "version": "0.1.0-alpha.1",
+  "license": "MIT"
+}

@@ -1,0 +1,41 @@
+{
+  "name": "xm-gatekeeper",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --watch apps/bot/src/main.ts",
+    "start": "bun apps/bot/src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "migrate": "bun scripts/migrate.ts",
+    "assets:build": "bun scripts/build-assets.ts",
+    "assets:validate": "bun scripts/validate-assets.ts",
+    "backup": "bun scripts/backup.ts",
+    "boards:build": "bun scripts/build-board-bank.ts"
+  },
+  "dependencies": {
+    "@guard/assets": "workspace:*",
+    "@guard/bot": "workspace:*",
+    "@guard/captcha": "workspace:*",
+    "@guard/core": "workspace:*",
+    "@guard/database": "workspace:*",
+    "@guard/i18n": "workspace:*",
+    "dayjs": "1.11.23",
+    "grammy": "1.46.0",
+    "sharp": "0.35.5",
+    "capjs-core": "0.1.14",
+    "cap-widget": "0.1.62",
+    "@cap.js/wasm": "0.0.8",
+    "pako": "2.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "7.0.2"
+  },
+  "version": "0.1.0-alpha.1",
+  "license": "MIT"
+}
