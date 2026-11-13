@@ -18,6 +18,7 @@ external CAPTCHA service is required.
 
 ## Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [How verification works](#how-verification-works)
 - [Requirements](#requirements)
@@ -29,6 +30,20 @@ external CAPTCHA service is required.
 - [Security](#security)
 - [Contributing](#contributing)
 - [Licence](#licence)
+
+## Screenshots
+
+Actual Mini App pages rendered at a 430 px mobile viewport in dark mode.
+The verification preview uses synthetic Telegram responses to show the state
+between a completed Cap check and picture delivery. No real accounts or group data
+appear in these screenshots.
+
+| Welcome page | After the Cap check |
+| --- | --- |
+| <img src="docs/screenshots/home.png" alt="XM Gatekeeper welcome page with animated globe" width="300"> | <img src="docs/screenshots/cap.png" alt="Verification page preparing the picture question after Cap" width="300"> |
+
+The globe animates in the app; these screenshots show a single frame.
+Maintainers can regenerate them using the **Documentation screenshots** workflow.
 
 ## Features
 
