@@ -23,6 +23,7 @@ external CAPTCHA service is required.
 - [How verification works](#how-verification-works)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
+- [Set up with an AI agent](#set-up-with-an-ai-agent)
 - [Configuration](#configuration)
 - [Commands](#commands)
 - [Project structure](#project-structure)
@@ -149,6 +150,77 @@ see [Deployment](docs/deployment.md#https-webhook-and-cap).
 > The bundled images are simple geometric shapes intended for development and
 > testing. They provide little protection on their own. Replace them before
 > production use. See [Challenge assets](assets/README.md).
+
+## Set up with an AI agent
+
+Copy the prompt below into your coding agent with access to the target machine.
+Fill in the deployment details first. Start with a dedicated test bot and group.
+Provide the bot token through a private environment file or your secret manager,
+not in the prompt, a public issue or a committed file.
+
+```text
+Help me install and configure XM Gatekeeper from:
+https://github.com/haruseed/xm-gatekeeper
+
+My setup:
+- Target machine or SSH alias: <local machine or SSH alias>
+- Installation directory: <absolute path>
+- Mode: <local test with polling | HTTPS webhook with Cap>
+- HTTPS hostname, if using Cap: <hostname or not applicable>
+- Bot token location: <private environment file or secret manager reference>
+- Process supervisor: <PM2 | existing supervisor | foreground for local testing>
+- Existing installation: <none | path and service name>
+
+Read README.md, .env.example, docs/deployment.md, assets/README.md and any
+repository instructions before making changes. Inspect the actual configuration
+and scripts instead of assuming example paths match my machine. Use the current
+repository's documented requirements and pinned dependencies.
+
+1. Check the OS, Bun version, filesystem permissions and existing services.
+   Identify missing information before changing an existing installation.
+   Preserve existing environment values, data, user changes and unrelated services.
+   Never disable SSH host-key verification or overwrite a changed host key.
+
+2. Install dependencies using the lockfile. Build the original demo assets and a
+   40-board development bank, then run asset validation, type checking and tests.
+   The board builder refuses to overwrite a directory: reuse a valid existing bank
+   or build into a new directory. Demo shapes are for testing; explain how I can
+   supply licensed artwork and rebuild a larger bank for production evaluation.
+
+3. Create a private .env with absolute database, asset and temporary paths.
+   Retrieve the bot token from the location I provided without printing it.
+   Generate independent random webhook and Cap secrets when needed. Never put
+   credentials, database contents or real Telegram user data into commits or logs.
+
+4. For polling, leave webhook and Cap settings unset. This mode uses two picture
+   questions. For Cap, configure the HTTPS webhook and Cap URLs on the same origin
+   with different paths, and proxy the configured routes to the local listener.
+   Keep authenticated routes uncached and free of interactive proxy challenges.
+   Guide me through enabling the Main Mini App in BotFather with the correct URL;
+   report any step that needs my Telegram access rather than claiming it is done.
+
+5. Initialise or migrate the database with the bot stopped. Back up an existing
+   database first and check schema compatibility. Start exactly one bot instance
+   with the requested supervisor. Adapt the PM2 example to actual paths and users;
+   do not run the existing-installation cutover script as a fresh-install script.
+   Starting the bot can register or remove its Telegram webhook, so check for an
+   existing running instance and coordinate a cutover before starting a replacement.
+
+6. Verify startup and the configured HTTP routes without exposing secrets. Guide
+   me through /setup, bot administrator permissions and a second-account test of
+   direct joins, join requests, wrong answers, timeouts and administrator review.
+   With Cap enabled, verify its one-picture flow and separate one-minute stage
+   deadlines. Confirm another account cannot answer the newcomer's challenge.
+
+Finish with the installed commit, changed files, checks actually completed,
+service and backup commands, and any remaining manual steps. Distinguish automated
+checks from Telegram tests I still need to perform. If a step fails, diagnose it
+and explain the blocker instead of reporting the installation as complete.
+```
+
+The agent can prepare the application and server configuration. BotFather changes
+and real Telegram acceptance tests may require your participation. Review the
+agent's results before enabling the guard in a live community.
 
 ## Configuration
 
