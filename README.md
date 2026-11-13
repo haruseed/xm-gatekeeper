@@ -72,12 +72,18 @@ Maintainers can regenerate them using the **Documentation screenshots** workflow
    browser proof-of-work check. A private-chat fallback is available.
 4. **Picture question**: the user picks the matching image from six choices.
    Retries, skips and language changes share a single deadline.
-5. On success the user is unmuted or the join request is approved. Failed and
-   timed-out attempts are handled according to the group's settings and can be
-   inspected with `/review` and `/audit`.
+5. On success the user is unmuted or the join request is approved. A delivered
+   check that times out or exhausts its wrong-answer attempts causes automatic
+   removal from the group or rejection of the join request. This is not a permanent
+   ban; the person may rejoin, subject to retry limits.
+
+Help requests, raid mode, undelivered challenges and detected service problems
+remain in `/review`. Delayed expiry processing after an outage also goes to review.
+Existing review records are not automatically removed retroactively. `/audit`
+records automatic removal decisions.
 
 Group notices that verification was not completed disappear after one minute.
-The user stays muted and remains available in `/review`. Temporary deletion
+Users in manual review stay muted and remain available in `/review`. Temporary deletion
 failures are retried, including after a restart.
 
 By default, the Cap and picture stages each have a one-minute window. If Cap is not
@@ -212,7 +218,8 @@ repository's documented requirements and pinned dependencies.
 
 6. Verify startup and the configured HTTP routes without exposing secrets. Guide
    me through /setup, bot administrator permissions and a second-account test of
-   direct joins, join requests, wrong answers, timeouts and administrator review.
+   direct joins, join requests, automatic removal after wrong-answer exhaustion or
+   timeout, and administrator review for help requests and service problems.
    With Cap enabled, verify its one-picture flow and separate one-minute stage
    deadlines. Confirm another account cannot answer the newcomer's challenge.
 

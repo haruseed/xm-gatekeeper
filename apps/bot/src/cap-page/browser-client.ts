@@ -16,7 +16,7 @@ function mountCapPage(base: string): void {
     CAP_CUSTOM_FETCH?: (url: string, options?: RequestInit) => Promise<Response>;
   }
   interface Session { passed?: boolean; ticket?: string; returnUrl?: string }
-  interface PictureStatus { state: 'waiting' | 'ready' | 'review' | 'finished'; returnUrl?: string }
+  interface PictureStatus { state: 'waiting' | 'ready' | 'review' | 'finished' | 'removed'; returnUrl?: string }
 
   const browser = window as unknown as CapBrowser;
   const element = (id: string): HTMLElement => {
@@ -110,7 +110,7 @@ function mountCapPage(base: string): void {
                 return;
               }
               if (result.state !== 'waiting') {
-                setState(result.state === 'finished' ? 'Your verification is complete.' : 'Administrator assistance is required. Please return to Telegram for help.');
+                setState(result.state === 'removed' ? 'Verification was not completed. Please join again to retry.' : result.state === 'finished' ? 'Your verification is complete.' : 'Administrator assistance is required. Please return to Telegram for help.');
                 return;
               }
             } else if (response.status === 403) {

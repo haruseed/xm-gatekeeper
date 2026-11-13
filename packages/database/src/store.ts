@@ -115,6 +115,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
     readonly db: Database,
     private readonly rng: Rng,
     readonly requireCap = false,
+    readonly autoRemoveFailed = false,
   ) {
     this.groups = new SqliteGroups(db);
     this.resumeTokens = new SqliteResumeTokens(db, rng);
@@ -604,8 +605,25 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
     });
   }
 
+  noteVerificationServiceIssue(now: number): void {
+    this.setState('verification_service_issue_at', String(now));
+  }
+
+  /** Only delivered challenges may cause an automatic removal. Service failures stay in review. */
+  private failVerification(r: RequestRow, reason: string, now: number, delivered?: boolean): void {
+    const group = this.getGroup(r.chat_id);
+    const wasDelivered = delivered ?? (this.requireCap && !this.capPassed(r.id)
+      ? r.prompt_message_id !== null || !!this.db.query('SELECT 1 FROM cap_messages WHERE request_id=?').get(r.id)
+      : !!this.db.query("SELECT 1 FROM sessions WHERE request_id=? AND message_id IS NOT NULL AND state IN ('active','failed','expired')").get(r.id));
+    const serviceIssue = Number(this.getState('verification_service_issue_at') ?? 0) >= r.created_at
+      || !!this.db.query("SELECT 1 FROM outbox WHERE request_id=? AND kind IN ('quarantine','invite','prepare_round','cap_picture') AND last_error_code IS NOT NULL").get(r.id);
+    if (this.autoRemoveFailed && group?.enabled && !group.raid_mode && wasDelivered && !serviceIssue && now <= r.deadline_at + 30_000) {
+      this.queueDecision(r.id, r.chat_id, 'decline', 0, now, reason);
+    } else this.setRequest(r, 'manual_review', reason, now);
+  }
+
   /** Records a reviewer's decision and queues the Telegram action. */
-  queueDecision(requestId: string, chatId: number, decision: 'approve' | 'decline', actor: number, now: number): boolean {
+  queueDecision(requestId: string, chatId: number, decision: 'approve' | 'decline', actor: number, now: number, reason = 'manual_review'): boolean {
     return this.tx(() => {
       const r = this.getRequest(requestId);
       if (!r || r.chat_id !== chatId) return false;
@@ -616,17 +634,17 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
       this.run(
         'UPDATE join_requests SET state=?, reason_code=?, revision=revision+1, updated_at=? WHERE id=?',
         state,
-        'manual_review',
+        reason,
         now,
         r.id,
       );
-      this.audit(r.chat_id, actor, r.user_id, `review_${decision}`, 'manual_review', now, r.id);
+      this.audit(r.chat_id, reason === 'manual_review' ? actor : null, r.user_id, reason === 'manual_review' ? `review_${decision}` : 'automatic_decline', reason, now, r.id);
       this.enqueue({
         dedupeKey: `${decision}:${r.id}:${r.revision + 1}`,
         requestId: r.id,
         revision: r.revision + 1,
         kind: decision,
-        payload: { manual: true },
+        payload: { manual: reason === 'manual_review' },
         now,
       });
       return true;
@@ -717,7 +735,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
       if (existing) return { ok: true, sessionId: existing.id, existing: true };
       const settings = this.settingsOf(group);
       if (this.attemptsUsed(r.chat_id, r.user_id, settings.attemptWindowMin * 60_000, now) >= settings.attempts) {
-        this.setRequest(r, 'manual_review', 'attempts_exhausted', now);
+        this.failVerification(r, 'attempts_exhausted', now);
         return { ok: false, reason: 'exhausted' };
       }
       const prefs = this.getPrefs(r.user_id);
@@ -727,7 +745,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
       const expiresAt = limit;
       if (expiresAt <= now) {
         if (r.deadline_at <= now) {
-          this.setRequest(r, 'manual_review', 'expired', now);
+          this.failVerification(r, 'expired', now);
           return { ok: false, reason: 'expired' };
         }
         return { ok: false, reason: 'time_short' };
@@ -898,7 +916,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
           this.run(`UPDATE join_requests SET state='pending', updated_at=? WHERE id=?`, now, r.id);
           this.audit(r.chat_id, null, r.user_id, 'attempt_failed', 'wrong_answer', now, r.id);
         } else {
-          this.setRequest(r, 'manual_review', 'attempts_exhausted', now);
+          this.failVerification(r, 'attempts_exhausted', now);
         }
         return { result: 'wrong', ...base, canRetry };
       }
@@ -964,7 +982,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
             this.attemptsUsed(r.chat_id, r.user_id, settings.attemptWindowMin * 60_000, now) < settings.attempts &&
             r.deadline_at > now;
           if (canRetry) this.run(`UPDATE join_requests SET state='pending', updated_at=? WHERE id=?`, now, r.id);
-          else this.setRequest(r, 'manual_review', 'challenge_expired', now);
+          else this.failVerification(r, 'challenge_expired', now, s.state === 'active' && s.message_id !== null);
         }
         out.push({
           sessionId: s.id,
@@ -980,7 +998,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
       return out;
     });
   }
-  /** Requests whose lifetime ended without a decision go to manual review; never an automatic decline. */
+  /** Expire overdue requests; delivered checks may queue automatic removal. */
   expireRequests(now: number, batch: number): RequestRow[] {
     return this.tx(() => {
       const rows = this.all<RequestRow>(
@@ -991,7 +1009,7 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
       for (const r of rows) {
         this.closeSessions(r.id, 'expired');
         this.cancelOutbox(r.id);
-        this.setRequest(r, 'manual_review', 'expired', now);
+        this.failVerification(r, 'expired', now);
       }
       return rows;
     });

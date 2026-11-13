@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     lock = acquireInstanceLock(config.databasePath);
     db = openDatabase(config.databasePath);
     if (!schemaIsCurrent(db)) throw new Error('database schema is not current: stop the bot and run `bun run migrate`');
-    const store = new Store(db, secureRng, !!config.cap);
+    const store = new Store(db, secureRng, !!config.cap, true);
     const assets = new LocalAssetStore(config.assetsDir);
     const bank = new BoardBank(join(config.assetsDir, 'board-bank'), assets);
     const bot = new Bot(config.botToken);

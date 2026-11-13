@@ -155,12 +155,12 @@ export interface Harness {
   boardDir: string;
 }
 
-export function harness(opts: { boards?: BoardProvider; boardBank?: BoardBank; assets?: AssetStore; dbPath?: string; maxActiveSessions?: number; cap?: boolean; groupLaunch?: boolean } = {}): Harness {
+export function harness(opts: { autoRemoveFailed?: boolean; boards?: BoardProvider; boardBank?: BoardBank; assets?: AssetStore; dbPath?: string; maxActiveSessions?: number; cap?: boolean; groupLaunch?: boolean } = {}): Harness {
   const dir = mkdtempSync(join(tmpdir(), 'guard-test-'));
   const dbPath = opts.dbPath ?? join(dir, 'guard.sqlite');
   const db = openDatabase(dbPath);
   migrate(db, T0);
-  const store = new Store(db, secureRng, opts.cap ?? false);
+  const store = new Store(db, secureRng, opts.cap ?? false, opts.autoRemoveFailed ?? false);
   const tg = new FakeTg();
   const clock = new FakeClock();
   const boardDir = join(dir, 'boards');

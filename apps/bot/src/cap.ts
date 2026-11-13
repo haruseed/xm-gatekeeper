@@ -37,7 +37,7 @@ export function capHandler(config: Config, store: CapRepository, verification: C
     const ticket = (req.headers.get('authorization') ?? '').replace(/^Bearer /, '');
     if (sub.startsWith('/api/') && (!TOKEN_PATTERN.test(ticket) || !service.ticket(ticket, clock.now()))) return json({ success: false }, 403);
     const releaseUpload = uploads.acquire();
-    if (!releaseUpload) return json({ success: false, reason: 'upload_busy' }, 429);
+    if (!releaseUpload) { store.noteVerificationServiceIssue(clock.now()); return json({ success: false, reason: 'upload_busy' }, 429); }
     let releaseCheck: (() => void) | undefined;
     try {
       let parsed: unknown;
@@ -53,13 +53,14 @@ export function capHandler(config: Config, store: CapRepository, verification: C
       const request = service.ticket(ticket, now);
       if (!request) return json({ success: false }, 403);
       releaseCheck = checks.acquire();
-      if (!releaseCheck) return json({ success: false, reason: 'busy' }, 429);
+      if (!releaseCheck) { store.noteVerificationServiceIssue(now); return json({ success: false, reason: 'busy' }, 429); }
       const reply = sub === '/api/challenge'
         ? await service.challenge(ticket, request, now)
         : await service.redeem(ticket, request, body);
       return json(reply.body, reply.status);
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
+      if (!['body_timeout', 'body_too_large'].includes(code) && !(error instanceof SyntaxError)) store.noteVerificationServiceIssue(clock.now());
       return json({ success: false, reason: code === 'body_timeout' ? 'upload_timeout' : 'check_failed' }, code === 'body_timeout' ? 408 : code === 'body_too_large' ? 413 : 400);
     } finally { releaseCheck?.(); }
   };

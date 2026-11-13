@@ -19,6 +19,7 @@ const AUDIT_LABELS: Record<string, string> = {
   request_superseded: 're-applied',
   request_external_resolution: 'left / other',
   review_approve: 'approved',
+  automatic_decline: 'automatic removal',
   review_decline: 'declined',
   retry_granted: 'retry given',
   user_banned: 'banned',

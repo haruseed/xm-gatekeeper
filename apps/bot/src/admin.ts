@@ -217,7 +217,7 @@ export class Admin {
         : '• ➖ Without "Invite users via link" I cannot approve join requests.',
       ...(group.invite_link ? [`• Optional stricter entry, a link that always creates a join request: ${group.invite_link}`] : []),
       '• People added by an administrator are not challenged.',
-      '• Failures and timeouts stay muted and go to /review. A passed challenge is friction, not proof of a human.',
+      '• Delivered checks that time out or exhaust wrong-answer attempts cause removal or rejection; users can rejoin. Help requests and service problems go to /review. A passed challenge is friction, not proof of a human.',
       '',
       group.enabled ? 'The guard is currently ENABLED.' : 'The guard is currently OFF. Test with a second account after enabling.',
     ];

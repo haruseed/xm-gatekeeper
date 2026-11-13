@@ -16,6 +16,7 @@ export interface CapSession {
 
 /** Browser verification use case; all pass/session/outbox changes remain atomic in Store. */
 export interface CapRepository {
+  noteVerificationServiceIssue(now: number): void;
   getRequest(requestId: string): CapRequest | undefined;
   liveSession(requestId: string): CapSession | undefined;
   capEligible(requestId: string, userId: number, now: number): CapRequest | undefined;

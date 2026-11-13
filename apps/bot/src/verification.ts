@@ -262,6 +262,11 @@ export class Verification {
   async afterAnswer(res: AnswerResult, chatId: number): Promise<void> {
     if (res.result === 'stale' || res.result === 'skip-limit') return;
     const req = this.d.store.getRequest(res.requestId);
+    if (req?.state === 'decline_pending') {
+      await this.sweepGroupMessages();
+      await this.drainOutbox();
+      return;
+    }
     if (req?.kind === 'member') return this.afterGroupAnswer(res, req);
     if (res.messageId !== null) {
       await this.d.tg.clearKeyboard(chatId, res.messageId).catch(() => undefined);
@@ -311,7 +316,7 @@ export class Verification {
   /** Review notices expire after one minute; retry prompts remain available. */
   private async groupNotice(r: RequestRow, key: 'group.review' | 'group.try_again', retry: boolean): Promise<void> {
     const fresh = this.d.store.getRequest(r.id);
-    if (!fresh) return;
+    if (!fresh || (key === 'group.review' && fresh.state !== 'manual_review')) return;
     await this.dropPrompt(fresh);
     const l = this.localeFor(r.user_id, r.chat_id);
     const rows: Button[][] = retry ? [[{ text: t(l, 'btn.retry'), callback_data: `t:${r.id}` }]] : [];
@@ -521,6 +526,13 @@ export class Verification {
     if (!r || r.state !== expected || r.revision !== row.request_revision) return;
     const manual = (JSON.parse(row.payload_json) as { manual?: boolean }).manual === true;
     const now = clock.now();
+    if (kind === 'decline' && !manual) {
+      const group = store.getGroup(r.chat_id);
+      if (!group?.enabled || group.raid_mode) {
+        store.resolveRequest(r.id, r.revision, 'manual_review', 'automatic_removal_paused', now);
+        return;
+      }
+    }
     if (kind === 'approve' && !manual) {
       if (store.requireCap && !store.capPassed(r.id)) {
         store.resolveRequest(r.id, r.revision, 'manual_review', 'cap_required', now);
@@ -578,7 +590,7 @@ export class Verification {
       r.id,
       r.revision,
       kind === 'approve' ? 'approved' : 'declined',
-      manual ? 'manual_review' : 'challenge_passed',
+      manual ? 'manual_review' : kind === 'approve' ? 'challenge_passed' : r.reason_code ?? 'verification_failed',
       clock.now(),
     );
     await this.dropPrompt(r);
@@ -617,6 +629,7 @@ export class Verification {
     const now = clock.now();
     for (const e of store.expireSessions(now, 50)) {
       const req = store.getRequest(e.requestId);
+      if (req?.state === 'decline_pending') continue;
       if (req?.kind === 'member') {
         await this.sweepGroupMessages();
         await this.groupNotice(req, e.canRetry ? 'group.try_again' : 'group.review', e.canRetry);

@@ -36,6 +36,7 @@ export class CapService {
   private pictureState(requestId: string): Record<string, unknown> {
     const request = this.store.getRequest(requestId);
     const session = this.store.liveSession(requestId);
+    if (request?.state === 'decline_pending' || request?.state === 'declined') return { state: 'removed' };
     if (request?.state === 'approved' || request?.state === 'approval_pending') return { state: 'finished' };
     if (!request || request.deadline_at <= this.clock.now() || ['manual_review', 'expired', 'declined', 'cancelled', 'external_resolution'].includes(request.state)) return { state: 'review' };
     if (session?.state === 'active' && session.message_id && session.expires_at > this.clock.now()) {
