@@ -76,6 +76,10 @@ Maintainers can regenerate them using the **Documentation screenshots** workflow
    timed-out attempts are handled according to the group's settings and can be
    inspected with `/review` and `/audit`.
 
+Group notices that verification was not completed disappear after one minute.
+The user stays muted and remains available in `/review`. Temporary deletion
+failures are retried, including after a restart.
+
 By default, the Cap and picture stages each have a one-minute window. If Cap is not
 configured, the bot asks two picture questions instead.
 

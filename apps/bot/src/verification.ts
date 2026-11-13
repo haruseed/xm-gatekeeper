@@ -308,7 +308,7 @@ export class Verification {
     await this.drainOutbox();
   }
 
-  /** One short notice in the group for a member whose check stopped; removed when it is resolved. */
+  /** Review notices expire after one minute; retry prompts remain available. */
   private async groupNotice(r: RequestRow, key: 'group.review' | 'group.try_again', retry: boolean): Promise<void> {
     const fresh = this.d.store.getRequest(r.id);
     if (!fresh) return;
@@ -318,6 +318,7 @@ export class Verification {
     try {
       const id = await this.d.tg.sendGroupPrompt(r.chat_id, r.user_id, t(l, key), { inline_keyboard: rows });
       this.d.store.setPromptMessage(r.id, id);
+      if (key === 'group.review') this.d.store.scheduleReviewNotice(r.chat_id, id, this.d.clock.now() + 60_000);
     } catch (e) {
       if (isDatabaseError(e)) throw e;
       log('warn', 'group_notice_failed', { kind: classify(e).kind });
@@ -638,6 +639,7 @@ export class Verification {
     }
     await this.drainOutbox();
     await this.cleanupCapMessages();
+    await this.cleanup.cleanupReviewNotices();
     await this.sweepGroupMessages();
 
     if (now - this.lastAlertCheck >= 30_000) {

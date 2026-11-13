@@ -63,3 +63,43 @@ test('failed cleanup bookkeeping propagates and leaves the message available for
   expect(h.store.capMessagesToDelete(h.clock.now())).toEqual([]);
   expect(h.tg.deleted).toEqual([10, 11, 12]);
 });
+
+
+test('review notices expire after 60 seconds, retry after restart, and preserve manual review', async () => {
+  const h = harness({cap:true}); enrol(h, GROUP, 1000, {requestLifetimeMin:1});
+  await h.v.onMemberJoined(GROUP, 5001, true, 5001, h.clock.now());
+  h.clock.advance(60_000);
+  await h.v.tick();
+  const request = h.store.liveRequest(GROUP, 5001)!;
+  expect(request.state).toBe('manual_review');
+  const message = request.prompt_message_id!;
+  expect(message).not.toBeNull();
+  h.clock.advance(59_999);
+  await h.v.tick();
+  expect(h.tg.deleted).not.toContain(message);
+  h.clock.advance(1);
+  h.tg.deleteMessage = async () => { throw new TgError('network','offline'); };
+  await h.v.tick();
+  expect(h.store.dueReviewNotices(h.clock.now())).toEqual([]);
+  h.store.db.close();
+  const resumed = harness({cap:true,dbPath:h.dbPath});
+  resumed.clock.advance(h.clock.now() - resumed.clock.now() + 30_000);
+  await resumed.v.tick();
+  expect(resumed.tg.deleted).toContain(message);
+  expect(resumed.store.getRequest(request.id)?.state).toBe('manual_review');
+  expect(resumed.tg.unrestricted).toHaveLength(0);
+  expect(resumed.store.dueReviewNotices(resumed.clock.now())).toEqual([]);
+});
+
+test('existing review notices are scheduled only once on upgrade', () => {
+  const h = setup();
+  const request = h.store.liveRequest(GROUP,5001)!;
+  h.store.toReview(request.id,5001,'help_requested',h.clock.now());
+  h.store.setPromptMessage(request.id,123);
+  h.store.scheduleExistingReviewNotices(h.clock.now());
+  h.clock.advance(60_000);
+  expect(h.store.dueReviewNotices(h.clock.now())).toEqual([{chatId:GROUP,messageId:123}]);
+  h.store.finishReviewNotice(GROUP,123);
+  h.store.scheduleExistingReviewNotices(h.clock.now());
+  expect(h.store.dueReviewNotices(h.clock.now()+60_000)).toEqual([]);
+});

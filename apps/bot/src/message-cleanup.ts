@@ -31,6 +31,22 @@ export class MessageCleanup {
     }
   }
 
+  async cleanupReviewNotices(): Promise<void> {
+    for (const message of this.store.dueReviewNotices(this.clock.now())) {
+      let retry = false;
+      let delay = 30_000;
+      try {
+        await this.tg.deleteMessage(message.chatId, message.messageId);
+      } catch (error) {
+        const failure = classify(error);
+        retry = !['bad_request', 'forbidden'].includes(failure.kind);
+        if (failure.kind === 'rate') delay = Math.max(delay, failure.retryAfterMs);
+      }
+      if (retry) this.store.scheduleReviewNotice(message.chatId, message.messageId, this.clock.now() + delay);
+      else this.store.finishReviewNotice(message.chatId, message.messageId);
+    }
+  }
+
   async sweepGroupMessages(): Promise<void> {
     for (const message of this.store.takeClosedGroupMessages(50)) {
       await this.tg.deleteMessage(message.chatId, message.messageId).catch(() => undefined);

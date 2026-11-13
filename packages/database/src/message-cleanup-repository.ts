@@ -1,5 +1,8 @@
 /** Cleanup bookkeeping only; admission decisions do not belong to message deletion. */
 export interface MessageCleanupRepository {
+  scheduleReviewNotice(chatId: number, messageId: number, dueAt: number): void;
+  dueReviewNotices(now: number): { chatId: number; messageId: number }[];
+  finishReviewNotice(chatId: number, messageId: number): void;
   capMessagesToDelete(now: number): { chat_id: number; message_id: number }[];
   finishCapMessage(chatId: number, messageId: number): void;
   retryCapMessage(chatId: number, messageId: number, now: number): void;

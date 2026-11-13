@@ -52,6 +52,7 @@ async function main(): Promise<void> {
     }));
     registerRoutes(bot, { verification, admin, store, assets, tg, clock });
     store.recoverCapPictures(clock.now());
+    store.scheduleExistingReviewNotices(clock.now());
 
     if (config.webhook) {
       // Listen before registering delivery; keep existing pending updates.

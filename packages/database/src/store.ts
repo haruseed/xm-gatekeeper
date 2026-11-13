@@ -145,6 +145,25 @@ export class Store implements MessageCleanupRepository, ActionTokens, CapReposit
   private readonly usernames: SqliteUsernameDirectory;
   private readonly photoCache: SqlitePhotoCache;
 
+  scheduleReviewNotice(chatId: number, messageId: number, dueAt: number): void {
+    this.setState(`review_notice:${chatId}:${messageId}`, JSON.stringify({chatId, messageId, dueAt}));
+  }
+  dueReviewNotices(now: number): { chatId: number; messageId: number }[] {
+    return this.db.query("SELECT value FROM runtime_state WHERE key GLOB 'review_notice:*' AND json_extract(value,'$.dueAt')<=? ORDER BY json_extract(value,'$.dueAt') LIMIT 25")
+      .all(now).map(row => { const {chatId, messageId} = JSON.parse((row as {value:string}).value); return {chatId, messageId}; });
+  }
+  finishReviewNotice(chatId: number, messageId: number): void {
+    this.deleteState(`review_notice:${chatId}:${messageId}`);
+  }
+  scheduleExistingReviewNotices(now: number): void {
+    this.tx(() => {
+      if (this.getState('review_notice_cleanup_v1')) return;
+      const rows = this.db.query("SELECT chat_id,prompt_message_id FROM join_requests WHERE kind='member' AND state='manual_review' AND prompt_message_id IS NOT NULL").all() as {chat_id:number;prompt_message_id:number}[];
+      for (const row of rows) this.scheduleReviewNotice(row.chat_id, row.prompt_message_id, now + 60_000);
+      this.setState('review_notice_cleanup_v1', 'done');
+    });
+  }
+
   trackCapMessage(requestId: string, chatId: number, messageId: number): void {
     this.capStorage.trackMessage(requestId, chatId, messageId);
   }
