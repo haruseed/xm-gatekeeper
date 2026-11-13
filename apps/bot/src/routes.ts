@@ -72,7 +72,7 @@ export function registerRoutes(bot: Bot, s: Services): void {
   const sendHelp = async (userId: number, chatId: number) => {
     const locale = v.localeFor(userId);
     let text = `${t(locale, s.store.requireCap ? 'help.cap' : 'help.text')}\n\n${t(locale, 'help.notice')}`;
-    text += '\n\n/whoami — my user ID and data centre';
+    text += '\n\n/whoami: my user ID and data centre';
     if (await admin.isAdmin(userId)) text += `\n\n${admin.helpText()}`;
     await v.say(chatId, text);
   };

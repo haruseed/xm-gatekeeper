@@ -106,7 +106,7 @@ export class AdminReports {
       const by = r.subject_user_id !== null && r.actor_user_id !== null && r.actor_user_id !== r.subject_user_id;
       return `<code>${stamp(r.created_at)}</code> ${event}${subject !== null ? ` · ${name(subject)}` : ''}${by ? ` · by ${name(r.actor_user_id!)}` : ''}${subject !== null ? `\nUser ID: <code>${subject}</code>` : ''}${by ? ` · Admin ID: <code>${r.actor_user_id!}</code>` : ''}`;
     });
-    await this.say(chatId, [`${head} — last ${rows.length} events`, `🕒 ${esc(zone)}`, '', ...lines].join('\n'), undefined, true);
+    await this.say(chatId, [`${head}: last ${rows.length} events`, `🕒 ${esc(zone)}`, '', ...lines].join('\n'), undefined, true);
   }
 
   /** One status card per group: indicators, request counts and shortcut buttons. */
@@ -130,7 +130,7 @@ export class AdminReports {
       `<b>🛡 ${esc(this.label(group))}</b>`,
       '',
       `${light(group.enabled === 1)} <b>Guard:</b> ${group.enabled ? 'on' : `off${paused}`}`,
-      group.raid_mode ? '🚨 <b>Raid mode:</b> ON — no automatic approvals' : '⚪ <b>Raid mode:</b> off',
+      group.raid_mode ? '🚨 <b>Raid mode:</b> ON: no automatic approvals' : '⚪ <b>Raid mode:</b> off',
       '',
       '<b>Bot rights</b>',
       `Mute new joiners: ${mute}`,
@@ -165,7 +165,7 @@ export class AdminReports {
     const total = counts.manual_review ?? queue.length;
     await this.say(
       chatId,
-      `👀 ${name}\n<b>${total}</b> waiting for review${total > queue.length ? ` — showing the oldest ${queue.length}` : ''}`,
+      `👀 ${name}\n<b>${total}</b> waiting for review${total > queue.length ? `: showing the oldest ${queue.length}` : ''}`,
       undefined,
       true,
     );

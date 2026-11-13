@@ -30,7 +30,7 @@ const en = {
   'whoami.dc_unknown': 'unknown (it is read from your profile photo, and I cannot see one)',
   'btn.retry': 'Try again',
   'btn.help': 'I need help / ask an administrator',
-  'btn.skip': 'I don’t know — change question',
+  'btn.skip': 'I don’t know: change question',
   'challenge.skip_limit': 'You have used all 3 question changes. Answer this question or ask an administrator for help.',
   'btn.start': 'Start / resume',
   'help.cap': "Complete Cap in this private chat, then answer one six-choice picture question to finish verification.",

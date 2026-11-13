@@ -656,7 +656,7 @@ export class Verification {
       for (const chatId of new Set(reviewExpired.map((r) => r.chat_id))) {
         await this.notifyAdmins(
           chatId,
-          `ℹ️ ${this.groupLabel(chatId)}: old review records were purged locally. This did not decline anything at Telegram — check the group's pending join requests.`,
+          `ℹ️ ${this.groupLabel(chatId)}: old review records were purged locally. This did not decline anything at Telegram: check the group's pending join requests.`,
         );
       }
       this.delivery.purge(now);

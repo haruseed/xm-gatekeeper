@@ -113,16 +113,16 @@ export class Admin {
       'For group administrators',
       'Only administrators of a group (with the "Ban users" or "Invite users" right) can use these, and only for their own group. Send them here in private chat.',
       '',
-      '/setup — set up the guard for your group and switch it on',
-      '/settings — change the rules (tap buttons)',
-      '/review — people waiting for a decision: approve, decline or let them try again',
-      '/raid on|off — stop automatic approvals during a spam wave',
-      '/ban <@username|user_id> — ban someone (in the group: reply to their message with /ban)',
-      '/mute <@username|user_id> 2h — stop someone sending messages for a while (in the group: reply with /mute 2h)',
-      '/unban <@username|user_id> — lift a mute or a ban (in the group: reply with /unban)',
-      '/audit — recent admin actions',
-      '/status — your groups at a glance',
-      '/group — switch group, if you administer several',
+      '/setup: set up the guard for your group and switch it on',
+      '/settings: change the rules (tap buttons)',
+      '/review: people waiting for a decision: approve, decline or let them try again',
+      '/raid on|off: stop automatic approvals during a spam wave',
+      '/ban <@username|user_id>: ban someone (in the group: reply to their message with /ban)',
+      '/mute <@username|user_id> 2h: stop someone sending messages for a while (in the group: reply with /mute 2h)',
+      '/unban <@username|user_id>: lift a mute or a ban (in the group: reply with /unban)',
+      '/audit: recent admin actions',
+      '/status: your groups at a glance',
+      '/group: switch group, if you administer several',
     ];
     return lines.join('\n');
   }
@@ -134,7 +134,7 @@ export class Admin {
   // ---------- /setup ----------
   async setupFromGroup(chatId: number, title: string, type: string): Promise<void> {
     this.store.upsertKnownChat(chatId, title, type, 'administrator', this.clock.now());
-    await this.say(chatId, `Setup continues in a private chat: https://t.me/${this.tg.username} — the group owner should send /setup there.`);
+    await this.say(chatId, `Setup continues in a private chat: https://t.me/${this.tg.username}: the group owner should send /setup there.`);
   }
 
   async setup(userId: number, chatId: number): Promise<void> {
@@ -183,7 +183,7 @@ export class Admin {
     const botCanInvite = me?.canInvite === true;
     const botCanRestrict = me?.canRestrict === true;
     const checks = [
-      `${chat.type === 'supergroup' ? '✅' : '❌'} Supergroup${chat.type === 'supergroup' ? '' : ' — convert the group to a supergroup first'}`,
+      `${chat.type === 'supergroup' ? '✅' : '❌'} Supergroup${chat.type === 'supergroup' ? '' : ': convert the group to a supergroup first'}`,
       `${isOwner ? '✅' : '❌'} You are an administrator of the group (with "Ban users" or "Invite users")`,
       `${botCanRestrict ? '✅' : botCanInvite ? '➖' : '❌'} I have the "Ban users" admin right (mute newcomers until verified)`,
       `${botCanInvite ? '✅' : botCanRestrict ? '➖' : '❌'} I have the "Invite users via link" admin right (handle join requests)`,

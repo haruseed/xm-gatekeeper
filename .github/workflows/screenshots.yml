@@ -1,0 +1,39 @@
+name: Documentation screenshots
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun scripts/screenshot-pages.ts /tmp/xm-pages
+      - run: |
+          mkdir -p /tmp/xm-browser
+          cd /tmp/xm-browser
+          npm init -y
+          npm install playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - run: |
+          mkdir -p docs/screenshots
+          node --input-type=module <<'JS'
+          import { chromium } from '/tmp/xm-browser/node_modules/playwright/index.mjs';
+          const browser = await chromium.launch();
+          const page = await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,colorScheme:'dark'});
+          for (const name of ['home','cap']) {
+            await page.goto('file:///tmp/xm-pages/'+name+'.html');
+            await page.waitForTimeout(1200);
+            await page.screenshot({path:'docs/screenshots/'+name+'.png',fullPage:true});
+          }
+          await browser.close();
+          JS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: documentation-screenshots
+          path: docs/screenshots/*.png

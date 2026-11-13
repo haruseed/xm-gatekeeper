@@ -1,46 +1,89 @@
 # XM Gatekeeper
 
-**v0.1.0-alpha.1 · Alpha testing**
+[![CI](https://github.com/haruseed/xm-gatekeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/haruseed/xm-gatekeeper/actions/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)
+![Bun 1.4.4](https://img.shields.io/badge/bun-1.4.4-black.svg)
 
-A self-hosted Telegram bot that verifies new members of Ingress community groups.
-Built with TypeScript, Bun, grammY and SQLite. One process; no Redis or PostgreSQL.
+A self-hosted Telegram bot that verifies new members of Ingress community groups
+before they can participate.
 
-This is an early public release. Interfaces, configuration and database schema may
-change before 1.0. Test with a separate bot and group before using it in a community.
+XM Gatekeeper runs as a single Bun process backed by SQLite: no Redis, PostgreSQL or
+external CAPTCHA service is required.
 
-## What it does
+> [!WARNING]
+> **Alpha release (v0.1.0-alpha.1).** Interfaces, configuration and the database
+> schema may change before 1.0. Evaluate the bot with a dedicated test bot and group
+> before deploying it to a live community.
 
-- Mutes new arrivals until verification, or verifies join requests before approval.
-- Runs a self-hosted Cap browser check, followed by one six-choice picture question.
-- Gives Cap and the picture stage separate one-minute windows by default. Picture
-  retries, skips and language changes share the same picture deadline.
-- Binds challenges and answers to the intended Telegram user, group and session.
-- Uses preprocessed image banks and Telegram file ID caching to avoid rendering
-  images on every join. Bounded workers support simultaneous verification sessions.
-- Provides administrator setup, review, audit, raid controls and moderation by
-  reply, known `@username` or numeric ID. Username lookup is limited to users the
-  bot has observed; it is not a Telegram-wide search.
-- Offers English, Traditional Chinese and Simplified Chinese verification text;
-  administrator settings use English.
+## Contents
 
-Cap uses a Telegram Mini App. With the bot's Main Mini App enabled, a newcomer can
-launch from the group. A private-chat fallback is available. Returning to the group
-waits until the picture and its message link are ready; Telegram client behaviour
-can still require a manual tap. Without Cap, the fallback is two picture rounds.
-A passed challenge is friction against abuse, not proof that a person is human.
+- [Features](#features)
+- [How verification works](#how-verification-works)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Project structure](#project-structure)
+- [Development](#development)
+- [Security](#security)
+- [Contributing](#contributing)
+- [Licence](#licence)
 
-## Included artwork
+## Features
 
-This repository includes **original geometric demo images**, not Ingress game
-artwork or production logos. The demo images make setup and tests reproducible;
-they are intentionally easy and are not recommended for real bot protection.
-For an Ingress-specific deployment, supply artwork you are licensed to use and
-record its provenance. See [assets/README.md](assets/README.md).
+- **Two intake modes.** Mutes new arrivals until they pass, or verifies join
+  requests before approving them.
+- **Layered challenge.** A self-hosted [Cap](https://capjs.js.org/) proof-of-work
+  check followed by a six-choice picture question.
+- **Session binding.** Every challenge and answer is bound to the intended user,
+  group and session; another account cannot answer on a newcomer's behalf.
+- **Fast delivery.** Challenge boards are pre-rendered into an image bank, and
+  Telegram file IDs are cached, so no image is rendered at join time.
+- **Durable processing.** Updates are persisted to an inbox before acknowledgement;
+  Telegram side effects run through a transactional outbox with bounded workers
+  and resume after a restart.
+- **Administrator tooling.** Guided setup, manual review, audit log, raid controls,
+  and moderation by reply, `@username` or numeric ID.
+- **Localisation.** Verification messages in English, Traditional Chinese and
+  Simplified Chinese. Administrator interfaces are in English.
+
+## How verification works
+
+1. A new group member is muted. A join requester remains outside the group until approved.
+2. The bot sends a challenge bound to that user and group.
+3. **Cap check**: the user opens the bot's Telegram Mini App and completes a
+   browser proof-of-work check. A private-chat fallback is available.
+4. **Picture question**: the user picks the matching image from six choices.
+   Retries, skips and language changes share a single deadline.
+5. On success the user is unmuted or the join request is approved. Failed and
+   timed-out attempts are handled according to the group's settings and can be
+   inspected with `/review` and `/audit`.
+
+By default, the Cap and picture stages each have a one-minute window. If Cap is not
+configured, the bot asks two picture questions instead.
+
+> [!NOTE]
+> A passed challenge adds friction against automated abuse. It does not prove that
+> the user is human, nor does it establish their identity.
+
+Launching the Mini App directly from the group requires the bot's **Main Mini App**
+to be enabled in BotFather. Returning to the group after Cap waits until the picture
+question is ready, although some Telegram clients may still require a manual tap.
+
+## Requirements
+
+| Requirement      | Notes                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| [Bun](https://bun.sh) 1.4.4 | The tested version.                              |
+| Linux or macOS   | Any platform supported by [Sharp](https://sharp.pixelplumbing.com/). Linux is recommended for production. |
+| Telegram bot     | A token from [@BotFather](https://t.me/BotFather).          |
+| Telegram supergroup | The bot needs **Ban users** and **Invite users via link** rights. |
+| HTTPS hostname   | Optional. Required for webhooks and the Cap Mini App.       |
 
 ## Quick start
 
-Use Bun **1.4.4** (the tested version), Git and a Linux or macOS machine supported
-by Sharp. Linux is recommended for deployment.
+**1. Install and build the demo assets**
 
 ```sh
 git clone https://github.com/haruseed/xm-gatekeeper.git
@@ -49,58 +92,187 @@ bun install --frozen-lockfile
 bun run assets:build
 bun run boards:build -- assets/board-bank 40
 bun run assets:validate
-bun run typecheck
-bun test
-cp .env.example .env
 ```
 
-Edit `.env`: enter a BotFather token and absolute paths to this checkout's assets,
-a private database file and a temporary directory. Create the data and temporary
-directories, protect `.env`, then initialise the database and start:
+**2. Verify the build**
 
 ```sh
+bun run typecheck
+bun test
+```
+
+**3. Configure**
+
+```sh
+cp .env.example .env
+chmod 600 .env
 mkdir -p data tmp
 chmod 700 data tmp
-chmod 600 .env
+```
+
+Edit `.env` and set `BOT_TOKEN`, `DATABASE_PATH`, `ASSETS_DIR` and `BOARD_TEMP_DIR`.
+See [Configuration](#configuration).
+
+**4. Initialise the database and start**
+
+```sh
 bun run migrate
 bun start
 ```
 
-The minimal configuration uses long polling and two picture rounds. To enable Cap
-and its one-picture flow, configure HTTPS, webhook and Cap variables together as
-shown in [deployment](docs/deployment.md). Never run more than one instance against
-the same database. A local instance lock also guards against accidental overlap.
+**5. Enrol a group**
 
-Add the bot to a supergroup with **Ban users** and **Invite users via link** rights.
-An authorised administrator can then use `/setup` in private chat to enrol and
-enable the group. Test both a direct join and a join request with a second account.
+1. Add the bot to a supergroup with **Ban users** and **Invite users via link** rights.
+2. As a group administrator, send `/setup` to the bot in a private chat and follow
+   the checklist to enrol and enable the group.
+3. Using a second account, test both a direct join and a join request.
+
+This minimal configuration uses long polling and the two-picture flow. To enable Cap,
+see [Deployment](docs/deployment.md#https-webhook-and-cap).
+
+> [!IMPORTANT]
+> The bundled images are simple geometric shapes intended for development and
+> testing. They provide little protection on their own. Replace them before
+> production use. See [Challenge assets](assets/README.md).
+
+## Configuration
+
+Configuration is read from environment variables. Bun loads `.env` from the
+working directory automatically. See [`.env.example`](.env.example) for a template.
+
+### Core
+
+| Variable              | Required | Default | Description                                         |
+| --------------------- | :------: | ------- | --------------------------------------------------- |
+| `BOT_TOKEN`           | Yes      |:       | Bot token issued by BotFather.                      |
+| `DATABASE_PATH`       | Yes      |:       | Absolute path to the SQLite database file.          |
+| `ASSETS_DIR`          | Yes      |:       | Absolute path to the `assets` directory.            |
+| `BOARD_TEMP_DIR`      | Yes      |:       | Absolute path to a private temporary directory.     |
+| `ASSET_STORAGE`       | No       | `local` | Asset backend. Only `local` is supported.           |
+| `MAX_ACTIVE_SESSIONS` | No       | `200`   | Concurrent verification sessions (1–2000).          |
+| `MAX_RENDER_QUEUE`    | No       | `20`    | Pending render jobs (1–200).                        |
+| `MAX_OUTBOX_PENDING`  | No       | `500`   | Pending outbound Telegram operations (10–5000).     |
+| `LOG_LEVEL`           | No       | `info`  | One of `debug`, `info`, `warn`, `error`.            |
+
+### Webhook and Cap (optional)
+
+Set the webhook URL and secret to enable webhook delivery; the port defaults to
+8788. Add both Cap variables to enable the Mini App. With no webhook URL, the bot
+uses long polling.
+
+| Variable         | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `WEBHOOK_URL`    | Public HTTPS URL for Telegram updates, e.g. `https://bot.example.com/tg/webhook`. |
+| `WEBHOOK_SECRET` | Random URL-safe secret, 24–256 characters.                            |
+| `WEBHOOK_PORT`   | Local listener port (default `8788`).                                 |
+| `CAP_PUBLIC_URL` | Public HTTPS URL of the Cap page, on the same origin as `WEBHOOK_URL` with a different path. |
+| `CAP_SECRET`     | Random URL-safe secret, 32–256 characters.                            |
+
+Generate secrets with `openssl rand -hex 32`. Use a different value for each.
+
+> [!CAUTION]
+> Run exactly one instance per database. Do not use PM2 cluster mode or point
+> multiple hosts at the same database file. A local instance lock guards against
+> accidental overlap.
 
 ## Commands
 
-Members: `/help`, `/whoami`.
+All commands accept the addressed form, such as `/status@YourBot`.
 
-Administrators: `/setup`, `/group`, `/status`, `/review`, `/settings`, `/raid`,
-`/audit`, `/ban`, `/mute`, `/unban`.
-Pause, resume and removal are available through administrator controls.
-Availability depends on the caller's current group permissions. See `/help` and
-the setup checklist for usage. Addressed commands such as `/status@YourBot` are
-supported. Moderation targets are checked against the selected group.
+### Members
+
+| Command   | Description                         |
+| --------- | ----------------------------------- |
+| `/help`   | Show help and available commands.   |
+| `/whoami` | Show your user ID and data centre.  |
+
+### Administrators
+
+Send administrator commands to the bot in a private chat. `/ban`, `/mute` and
+`/unban` can also be used as a reply to a member's message in the group.
+
+| Command     | Description                                            |
+| ----------- | ------------------------------------------------------ |
+| `/setup`    | Enrol and enable a group.                              |
+| `/group`    | Select the group to manage.                            |
+| `/status`   | Show the group's verification status.                  |
+| `/review`   | Review pending and failed verifications.               |
+| `/settings` | Change verification settings.                          |
+| `/raid`     | `on` or `off`. In raid mode, new requests go to review. |
+| `/audit`    | Show recent administrative and verification events.    |
+| `/ban`      | Ban a user.                                            |
+| `/mute`     | Mute a user (one hour unless a duration is given).     |
+| `/unban`    | Lift a mute or ban.                                          |
+
+Pause, resume and group removal are available through the administrator controls.
+Each action is authorised against the caller's current permissions in the selected
+group.
+
+Moderation commands accept a reply, a numeric user ID or an `@username`. Username
+lookup only resolves users the bot has already observed; it is not a Telegram-wide
+search.
+
+## Project structure
+
+```text
+apps/bot/            Telegram adapters, verification flow, Cap Mini App, admin tools
+packages/core/       Configuration, policy, clocks, randomness, redacted logging
+packages/database/   SQLite migrations, repositories, inbox and outbox
+packages/assets/     Asset manifests, path safety and hash validation
+packages/captcha/    Question selection and board composition
+packages/i18n/       English and Chinese message catalogues
+scripts/             Asset, board-bank, migration and backup tooling
+ops/                 Release, preflight and runtime readiness checks
+assets/              Demo artwork and generated challenge assets
+docs/                Architecture and deployment guides
+```
 
 ## Development
 
-See [architecture](docs/architecture.md), [deployment](docs/deployment.md),
-[security](SECURITY.md) and [third-party notices](THIRD_PARTY_NOTICES.md).
-Tests use isolated fixture databases and a scripted Telegram adapter; they do not
-contact live Telegram accounts. The suite includes ten-user concurrency and
-cross-user token-isolation checks. It does not establish production throughput or
-CAPTCHA resistance against an adaptive solver.
+| Script                    | Description                                    |
+| ------------------------- | ---------------------------------------------- |
+| `bun run dev`             | Start the bot in watch mode.                   |
+| `bun start`               | Start the bot.                                 |
+| `bun run migrate`         | Apply database migrations.                     |
+| `bun run typecheck`       | Type-check the workspace.                      |
+| `bun test`                | Run the test suite.                            |
+| `bun run assets:build`    | Rasterise demo artwork and write the manifest. |
+| `bun run assets:validate` | Validate assets, hashes and translations.      |
+| `bun run boards:build -- <dir> <count>` | Build a pre-rendered board bank. |
+| `bun run backup -- <abs-dir>` | Write a verified database snapshot.        |
 
-Contributions are welcome. Keep changes focused, include relevant tests, and run
-`bun run typecheck` and `bun test` after preparing the demo image bank. Never submit
-credentials, real user data, production database files or unlicensed artwork.
+Build the demo assets and board bank before running `typecheck` or `test`.
+
+Tests use isolated fixture databases and a scripted Telegram adapter; they never
+contact Telegram. The suite covers ten-user concurrency and cross-user token
+isolation. It does not measure production throughput or resistance to an adaptive
+CAPTCHA solver.
+
+Further reading:
+
+- [Architecture](docs/architecture.md)
+- [Deployment](docs/deployment.md)
+- [Changelog](CHANGELOG.md)
+
+## Security
+
+Keep the bot token, secrets, database, backups and logs private. See
+[SECURITY.md](SECURITY.md) for data-handling guidance and how to report a
+vulnerability privately.
+
+## Contributing
+
+Contributions are welcome. Please:
+
+- keep each change focused and include relevant tests;
+- run `bun run typecheck` and `bun test` before opening a pull request;
+- never submit credentials, real user data, production databases or unlicensed artwork.
 
 ## Licence
 
-MIT for this repository's code and original demo artwork. Dependencies retain
-their own licences. Ingress is owned by Niantic Spatial, Inc.; this is an unofficial
+Released under the [MIT Licence](LICENSE). This covers the code and the original
+demo artwork. Dependencies retain their own licences; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Ingress is owned by Niantic Spatial, Inc. XM Gatekeeper is an unofficial
 community project and is not affiliated with or endorsed by Niantic Spatial.

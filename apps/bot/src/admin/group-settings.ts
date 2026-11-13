@@ -33,7 +33,7 @@ export class GroupSettingsEditor {
     if (group.enabled) rows.push([this.button(userId, '⏸ Pause guard', { op: 'pause', chat: gid })]);
     const text = [
       `Settings for ${this.label(group)}`,
-      `Guard: ${group.enabled ? 'ENABLED' : `OFF${group.paused_reason ? ` (${group.paused_reason})` : ''} — enable via /setup`} · Raid mode: ${group.raid_mode ? 'ON' : 'off'}`,
+      `Guard: ${group.enabled ? 'ENABLED' : `OFF${group.paused_reason ? ` (${group.paused_reason})` : ''}: enable via /setup`} · Raid mode: ${group.raid_mode ? 'ON' : 'off'}`,
       '',
       'Tap a setting to change it.',
     ].join('\n');
